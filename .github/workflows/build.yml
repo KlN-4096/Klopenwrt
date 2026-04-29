@@ -1,0 +1,35 @@
+name: Build OpenWrt
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential zstd wget rsync unzip file
+
+      - name: Build OpenWrt image
+        run: |
+          VER=25.12.2
+          BASE=https://downloads.openwrt.org/releases/$VER/targets/x86/64
+          wget $BASE/openwrt-imagebuilder-$VER-x86-64.Linux-x86_64.tar.zst
+          tar --zstd -xf openwrt-imagebuilder-$VER-x86-64.Linux-x86_64.tar.zst
+          cd openwrt-imagebuilder-*
+          make image \
+            PROFILE=generic \
+            ROOTFS_PARTSIZE=1024 \
+            PACKAGES="$(tr '\n' ' ' < ../packages.txt)"
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: openwrt-x86-64
+          path: openwrt-imagebuilder-*/bin/targets/x86/64/*
